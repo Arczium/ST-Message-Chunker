@@ -1,7 +1,7 @@
 {
     "display_name": "Message Chunker",
-    "name": "st-message-chunker",
-    "version": "1.0.1",
+    "name": "ST-Message-Chunker",
+    "version": "1.0.2",
     "description": "Increases API cache hit rate by truncating the chat history in larger chunks during context generation, rather than message-by-message.",
     "author": "Arczium",
     "homepage": "https://github.com/Arczium/ST-Message-Chunker",

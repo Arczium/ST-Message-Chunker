@@ -26,7 +26,7 @@ Evaluates the actual token count of the chat history.
 
 1. Open SillyTavern and navigate to the **Extensions** menu (the block icon).
 2. Click on **Install Extension**.
-3. Paste the link to this GitHub repository and click install.
+3. Paste the repository link: [https://github.com/Arczium/ST-Message-Chunker](https://github.com/Arczium/ST-Message-Chunker) and click install.
 4. Refresh SillyTavern and configure the settings in the Extensions menu.
 
 

@@ -2,7 +2,7 @@ import { extension_settings, renderExtensionTemplate } from "../../../extensions
 import { getTokenCount } from "../../../tokenizers.js";
 import { saveSettingsDebounced, eventSource, event_types, chat_metadata } from "../../../../script.js";
 
-const extensionName = "st-message-chunker";
+const extensionName = "ST-Message-Chunker";
 
 const defaultSettings = {
     mode: 'messages',
@@ -44,9 +44,8 @@ async function initExtension() {
     
     settings = Object.assign({}, defaultSettings, extension_settings[extensionName]);
 
-    const settingsHtml = await renderExtensionTemplate('third-party/st-message-chunker', 'settings');
-    //const settingsHtml = await renderExtensionTemplate('st-message-chunker', 'settings');
-
+    const settingsHtml = await renderExtensionTemplate('third-party/ST-Message-Chunker', 'settings');
+  
     $('#extensions_settings2').append(settingsHtml);
 
     $('#mchunker_mode').val(settings.mode);
