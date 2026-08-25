@@ -1,14 +1,13 @@
 {
     "display_name": "Message Chunker",
-    "name": "ST-Message-Chunker",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "Increases API cache hit rate by truncating the chat history in larger chunks during context generation, rather than message-by-message.",
     "author": "Arczium",
     "homePage": "https://github.com/Arczium/ST-Message-Chunker",
     "js": "index.js",
     "loading_order": 111,
     "generate_interceptor": "MessageChunker_trimContext",
-    "autoUpdate": true,
+    "auto_update": true,
     "requires": [],
     "optional": []
 }
