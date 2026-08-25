@@ -89,11 +89,8 @@ function trimContext(chatCopy) {
     console.log(`[ST Message Chunker] Received chat array with ${chatCopy.length} messages.`);
     if (settings.mode === 'off' || typeof chat_metadata === 'undefined') return;
 
-    // Load the timestamp anchor instead of a numerical offset
     let anchorDate = chat_metadata['mchunker_anchor_date'] || 0;
     
-    // 1. Clean up past chunks using the anchor
-    // Iterate backwards so splicing doesn't shift the indices of our loop
     for (let i = chatCopy.length - 1; i >= 0; i--) {
         const msg = chatCopy[i];
         
@@ -105,36 +102,30 @@ function trimContext(chatCopy) {
         }
     }
 
-    // 2. Evaluate if a new chunk needs to be removed
     if (settings.mode === 'messages') {
         anchorDate = modusMaxMessages(chatCopy, anchorDate);
     } else if (settings.mode === 'tokens') {
         anchorDate = modusMaxTokens(chatCopy, anchorDate); 
     }
 
-    // Save the new timestamp anchor
     chat_metadata['mchunker_anchor_date'] = anchorDate;
 }
 
 function modusMaxMessages(chatCopy, anchorDate) {
     const maxAllowed = settings.minMessages + settings.chunkSize;
     
-    // Isolate only the true chat history for our calculations
     const historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
 
     if (historyMsgs.length > maxAllowed) {
         console.log(`[ST Message Chunker] Splicing ${settings.chunkSize} messages...`);
         
-        // Identify the exact messages to drop
         const messagesToDrop = historyMsgs.slice(0, settings.chunkSize);
         
-        // The new anchor is the timestamp of the FIRST message we keep
         const firstKept = historyMsgs[settings.chunkSize];
         if (firstKept && firstKept.send_date) {
             anchorDate = firstKept.send_date;
         }
 
-        // Remove the targeted messages safely by object reference
         for (const msg of messagesToDrop) {
             const index = chatCopy.indexOf(msg);
             if (index !== -1) chatCopy.splice(index, 1);
@@ -148,25 +139,41 @@ function getChatTokens(chatArray) {
     return getTokenCount(chatString);
 }
 
-function modusMaxTokens(chatCopy, offset) {
+function modusMaxTokens(chatCopy, anchorDate) {
     let currentTokens = getChatTokens(chatCopy);
     console.log(`[ST Message Chunker] [Token Mode] Initial tokens evaluated at: ${currentTokens}. Target max: ${settings.maxTokens}`);
     
     while (currentTokens > settings.maxTokens) {
-        if (chatCopy.length <= settings.chunkSize) {
+        const historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
+
+          if (historyMsgs.length <= settings.chunkSize) {
             console.log(`[ST Message Chunker] [Token Mode] Chat length too small to chunk further. Breaking loop.`);
             break;
         }
+        
         console.log(`[ST Message Chunker] [Token Mode] Tokens (${currentTokens}) > Max (${settings.maxTokens}). Splicing ${settings.chunkSize} messages...`);
-        chatCopy.splice(0, settings.chunkSize);
-        offset += settings.chunkSize;
+        
+        const messagesToDrop = historyMsgs.slice(0, settings.chunkSize);
+        
+        const firstKept = historyMsgs[settings.chunkSize];
+        if (firstKept && firstKept.send_date) {
+            anchorDate = firstKept.send_date;
+        }
+
+        for (const msg of messagesToDrop) {
+            const index = chatCopy.indexOf(msg);
+            if (index !== -1) {
+                chatCopy.splice(index, 1);
+            }
+        }
+        
         currentTokens = getChatTokens(chatCopy);
     }
 
-    const logMsg = `Finished loop. New Offset: ${offset} | Sent Messages: ${chatCopy.length} | Final Tokens: ${currentTokens}`;
+    const logMsg = `Finished loop. New Anchor: ${anchorDate} | Sent Messages: ${chatCopy.length} | Final Tokens: ${currentTokens}`;
     console.log(`[ST Message Chunker] [Token Mode] ${logMsg}`);
     
-    return offset;
+    return anchorDate;
 }
 
 window['MessageChunker_trimContext'] = trimContext;
