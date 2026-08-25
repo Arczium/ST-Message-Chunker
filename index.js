@@ -85,55 +85,41 @@ async function initExtension() {
     console.log(`[ST Message Chunker]Initialization finished successfully.`);
 }
 
-function trimContext(chatCopy) {
-    console.log(`[ST Message Chunker] Received chat array with ${chatCopy.length} messages.`);
-    if (settings.mode === 'off' || typeof chat_metadata === 'undefined') return;
-
-    let anchorDate = chat_metadata['mchunker_anchor_date'] || 0;
-    
-    for (let i = chatCopy.length - 1; i >= 0; i--) {
-        const msg = chatCopy[i];
-        
-        // Skip system prompts, character defs, and injected vectors (which usually lack a send_date or use is_system)
-        if (msg.is_system || !msg.send_date) continue;
-
-        if (msg.send_date < anchorDate) {
-            chatCopy.splice(i, 1);
-        }
-    }
-
-    if (settings.mode === 'messages') {
-        anchorDate = modusMaxMessages(chatCopy, anchorDate);
-    } else if (settings.mode === 'tokens') {
-        anchorDate = modusMaxTokens(chatCopy, anchorDate); 
-    }
-
-    chat_metadata['mchunker_anchor_date'] = anchorDate;
-}
-
 function modusMaxMessages(chatCopy, anchorDate) {
     const maxAllowed = settings.minMessages + settings.chunkSize;
     
-    const historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
 
-    if (historyMsgs.length > maxAllowed) {
-        console.log(`[ST Message Chunker] Splicing ${settings.chunkSize} messages...`);
+    let historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
+
+
+    while (historyMsgs.length > maxAllowed) {
+        console.log(`[ST Message Chunker] [Message Mode] Chat length (${historyMsgs.length}) > Max (${maxAllowed}). Splicing ${settings.chunkSize} messages...`);
         
+
         const messagesToDrop = historyMsgs.slice(0, settings.chunkSize);
         
+
         const firstKept = historyMsgs[settings.chunkSize];
         if (firstKept && firstKept.send_date) {
             anchorDate = firstKept.send_date;
         }
 
+
         for (const msg of messagesToDrop) {
             const index = chatCopy.indexOf(msg);
-            if (index !== -1) chatCopy.splice(index, 1);
+            if (index !== -1) {
+                chatCopy.splice(index, 1);
+            }
         }
+        
+        historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
     }
+    
+    const logMsg = `Finished loop. New Anchor: ${anchorDate} | Final Sent Messages: ${chatCopy.length}`;
+    console.log(`[ST Message Chunker] [Message Mode] ${logMsg}`);
+       
     return anchorDate; 
 }
-
 function getChatTokens(chatArray) {
     const chatString = chatArray.map(message => message.mes).join('\n');
     return getTokenCount(chatString);
