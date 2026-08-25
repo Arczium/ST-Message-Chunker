@@ -82,28 +82,49 @@ async function initExtension() {
         updateUI();
     });
     
-    console.log(`[ST Message Chunker]Initialization finished successfully.`);
+    console.log(`[ST Message Chunker] Initialization finished successfully.`);
+}
+
+function trimContext(chatCopy) {
+    console.log(`[ST Message Chunker] Received chat array with ${chatCopy.length} messages.`);
+    if (settings.mode === 'off' || typeof chat_metadata === 'undefined') return;
+
+    let anchorDate = chat_metadata['mchunker_anchor_date'] || 0;
+    
+    // The critical cleanup loop
+    for (let i = chatCopy.length - 1; i >= 0; i--) {
+        const msg = chatCopy[i];
+        
+        if (msg.is_system || !msg.send_date) continue;
+
+        if (msg.send_date < anchorDate) {
+            chatCopy.splice(i, 1);
+        }
+    }
+
+    // Routing to the correct mode
+    if (settings.mode === 'messages') {
+        anchorDate = modusMaxMessages(chatCopy, anchorDate);
+    } else if (settings.mode === 'tokens') {
+        anchorDate = modusMaxTokens(chatCopy, anchorDate); 
+    }
+
+    chat_metadata['mchunker_anchor_date'] = anchorDate;
 }
 
 function modusMaxMessages(chatCopy, anchorDate) {
     const maxAllowed = settings.minMessages + settings.chunkSize;
-    
-
     let historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
-
 
     while (historyMsgs.length > maxAllowed) {
         console.log(`[ST Message Chunker] [Message Mode] Chat length (${historyMsgs.length}) > Max (${maxAllowed}). Splicing ${settings.chunkSize} messages...`);
         
-
         const messagesToDrop = historyMsgs.slice(0, settings.chunkSize);
-        
-
         const firstKept = historyMsgs[settings.chunkSize];
+        
         if (firstKept && firstKept.send_date) {
             anchorDate = firstKept.send_date;
         }
-
 
         for (const msg of messagesToDrop) {
             const index = chatCopy.indexOf(msg);
@@ -115,11 +136,11 @@ function modusMaxMessages(chatCopy, anchorDate) {
         historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
     }
     
-    const logMsg = `Finished loop. New Anchor: ${anchorDate} | Final Sent Messages: ${chatCopy.length}`;
-    console.log(`[ST Message Chunker] [Message Mode] ${logMsg}`);
+    console.log(`[ST Message Chunker] [Message Mode] Finished loop. New Anchor: ${anchorDate} | Final Sent Messages: ${chatCopy.length}`);
        
     return anchorDate; 
 }
+
 function getChatTokens(chatArray) {
     const chatString = chatArray.map(message => message.mes).join('\n');
     return getTokenCount(chatString);
@@ -130,9 +151,9 @@ function modusMaxTokens(chatCopy, anchorDate) {
     console.log(`[ST Message Chunker] [Token Mode] Initial tokens evaluated at: ${currentTokens}. Target max: ${settings.maxTokens}`);
     
     while (currentTokens > settings.maxTokens) {
-        const historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
+        let historyMsgs = chatCopy.filter(m => !m.is_system && m.send_date);
 
-          if (historyMsgs.length <= settings.chunkSize) {
+        if (historyMsgs.length <= settings.chunkSize) {
             console.log(`[ST Message Chunker] [Token Mode] Chat length too small to chunk further. Breaking loop.`);
             break;
         }
@@ -140,8 +161,8 @@ function modusMaxTokens(chatCopy, anchorDate) {
         console.log(`[ST Message Chunker] [Token Mode] Tokens (${currentTokens}) > Max (${settings.maxTokens}). Splicing ${settings.chunkSize} messages...`);
         
         const messagesToDrop = historyMsgs.slice(0, settings.chunkSize);
-        
         const firstKept = historyMsgs[settings.chunkSize];
+        
         if (firstKept && firstKept.send_date) {
             anchorDate = firstKept.send_date;
         }
@@ -156,8 +177,7 @@ function modusMaxTokens(chatCopy, anchorDate) {
         currentTokens = getChatTokens(chatCopy);
     }
 
-    const logMsg = `Finished loop. New Anchor: ${anchorDate} | Sent Messages: ${chatCopy.length} | Final Tokens: ${currentTokens}`;
-    console.log(`[ST Message Chunker] [Token Mode] ${logMsg}`);
+    console.log(`[ST Message Chunker] [Token Mode] Finished loop. New Anchor: ${anchorDate} | Sent Messages: ${chatCopy.length} | Final Tokens: ${currentTokens}`);
     
     return anchorDate;
 }
